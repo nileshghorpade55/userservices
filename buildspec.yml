@@ -1,33 +1,32 @@
 version: 0.2
 
 env:
-variables:
-AWS_DEFAULT_REGION: ap-south-1
-IMAGE_REPO_NAME: userservice
-IMAGE_TAG: latest
+  variables:
+    AWS_DEFAULT_REGION: ap-south-1
+    IMAGE_REPO_NAME: userservice
+    IMAGE_TAG: latest
 
 phases:
+  install:
+    runtime-versions:
+      java: corretto17
 
-install:
-runtime-versions:
-java: corretto17
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REPOSITORY_URI=380516826202.dkr.ecr.ap-south-1.amazonaws.com/userservice
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
-pre_build:
-commands:
-- echo Logging in to Amazon ECR
-- ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-- REPOSITORY_URI=380516826202.dkr.ecr.ap-south-1.amazonaws.com/userservice
-- aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+  build:
+    commands:
+      - echo Build started
+      - mvn clean package
+      - docker build -t $IMAGE_REPO_NAME .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
 
-build:
-commands:
-- echo Build started
-- mvn clean package
-- docker build -t $IMAGE_REPO_NAME .
-- docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
-
-post_build:
-commands:
-- echo Pushing Docker image
-- docker push $REPOSITORY_URI:$IMAGE_TAG
-- echo Build completed
+  post_build:
+    commands:
+      - echo Pushing Docker image
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Build completed
